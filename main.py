@@ -153,7 +153,8 @@ def get_dnsinfo(target):
     print("[+] Enumerating DNS")
     print("[+] Powered by DiG")
     time.sleep(1)
-    dnsen=subprocess.call(["sh", "./dig.sh"])
+    with open("dns.txt", "w") as f:
+        subprocess.run(["sh", "./dig.sh"], stdout=f)
 def get_axfr():
     print("[+] Enumerating AXFR zone transfer")
     print("[+] Powered by DiG")
