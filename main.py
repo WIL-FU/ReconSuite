@@ -50,14 +50,24 @@ def ping(addr):
     rsp = scapy.sr1(icmp, timeout=0.1)
     if rsp == None:
         print("[!] No response from server. The target may not be reachable.")
+        check = input("[?] Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            scan_ports(address)
+        elif check.lower() == "n":
+            print("[+] Exiting...")
     else:
         print("[*] Server responded. The target is alive.")
+        scan_ports(address)
 
 def scan_ports(addr):
     print("[+] Scanning ports")
     print("[+] Powered by nmap")
     time.sleep(1)
     pscan = subprocess.call(["nmap", "-oX" , "scan.xml" , "-Pn" , "-sT" , "-vvv" , addr])
+    l.append("## Nmap results")
+    l.append(" ")
+    loadScannedPorts("scan.xml")
+
 def loadScannedPorts(xmlfile):
     # xml sucks
     portProtocols = []
@@ -75,6 +85,12 @@ def loadScannedPorts(xmlfile):
         # what...
         l.append(f" - {port.attrib["protocol"].upper()} port {port.attrib["portid"]}: {state.attrib['state']}. Nmap service name: {port.find("service").attrib['name']}")
         p.append(port.attrib["portid"])
+    check = input("[?] Next stage: Confirming web server. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+    if check.lower() == "y":
+        checkIfWebserver(address)
+    elif check.lower() == "n":
+        print("[+] Exiting...")
+
 def writeToMd():
     m_lines = l
     with open("doc.md", "w") as f:
@@ -94,17 +110,29 @@ def checkIfWebserver(addr):
         r = requests.get(f"https://{addr}", timeout=3)
         print(f"[*] HTTPS server detected ({r.status_code})")
         isHttps = True
-        return
+        check = input("[?] Next stage: CMS detection. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            checkIfCMS(get_hostname(normalize_url(ip)))
+        elif check.lower() == "n":
+            print("[+] Exiting...")
     except requests.RequestException:
         print("[!] Not HTTPS")
     try:
         r = requests.get(f"http://{addr}", timeout=3)
         print(f"[*] HTTP server detected ({r.status_code})")
         isHttps = False
-        return
+        check = input("[?] Next stage: CMS detection. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            checkIfCMS(get_hostname(normalize_url(ip)))
+        elif check.lower() == "n":
+            print("[+] Exiting...")
     except requests.RequestException:
         print("[!] Not HTTP or unreachable")
-        return
+        check = input("[?] Next stage: CMS detection. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            checkIfCMS(get_hostname(normalize_url(ip)))
+        elif check.lower() == "n":
+            print("[+] Exiting...")
 
 def checkIfCMS(addr):
     print("[+] Checking if CMS exists")
@@ -116,13 +144,23 @@ def checkIfCMS(addr):
         with open(f"cmsdetection/Result/{addr}/cms.json", "r") as f:
             data = json.load(f)
         cms_name = data["cms_name"]
-
         if (cms_name != ""):
             l.append("## CMS")
             l.append(f"- {cms_name}")
             l.append(" ")
+        check = input(
+            "[?] Next stage: Subdomain emuneration. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            checkForSubdomains(get_hostname(normalize_url(ip)))
+        elif check.lower() == "n":
+            print("[+] Exiting...")
     else:
         print("[!] Could not get CMS details")
+        check = input("[?] Next stage: Subdomain emuneration. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+        if check.lower() == "y":
+            checkForSubdomains(get_hostname(normalize_url(ip)))
+        elif check.lower() == "n":
+            print("[+] Exiting...")
 
 def checkForSubdomains(addr):
     print("[+] Enumerating subdomains")
@@ -141,6 +179,11 @@ def checkForSubdomains(addr):
                 subdomains.append(data["host"])
                 l.append(f"- {data["host"]}")
     l.append(" ")
+    check = input("[?] Next stage: DNS emuneration. Do you still wish to continue with the scan? Enter \"y\" or \"n\"")
+    if check.lower() == "y":
+        get_dnsinfo(normalize_url(ip))
+    elif check.lower() == "n":
+        print("[+] Exiting...")
 
 def normalize_url(target):
     parsed = urlparse(target)
@@ -178,12 +221,6 @@ l.append("## Target")
 l.append(f"- IP: {address}")
 l.append(" ")
 ping(address)
-scan_ports(address)
-l.append("## Nmap results")
-l.append(" ")
-loadScannedPorts("scan.xml")
-checkIfWebserver(address)
-checkIfCMS(get_hostname(normalize_url(ip)))
-checkForSubdomains(get_hostname(normalize_url(ip)))
-get_dnsinfo(normalize_url(ip))
+print("[+] Writing output to Markdown file")
 writeToMd()
+print("[*] Scan complete")
