@@ -131,10 +131,17 @@ def checkForSubdomains(addr):
     subfinder = "./sub/subfinder"
     with open("subs.txt", "w") as f:
         subprocess.run([f"{subfinder}", "-d", addr, "-json"], stdout=f)
-    with open(f"subs.txt", "r") as f:
+    subdomains = []
+    l.append("## Subdomains")
+    with open("subs.txt", "r") as f:
         for line in f:
-            data = json.loads(line.strip())
-    print(data)
+            line = line.strip()
+            if line:  # Skip empty lines if any
+                data = json.loads(line)
+                subdomains.append(data["host"])
+                l.append(f"- {data["host"]}")
+    l.append(" ")
+
 def normalize_url(target):
     parsed = urlparse(target)
 
@@ -155,10 +162,6 @@ def get_dnsinfo(target):
     time.sleep(1)
     with open("dns.txt", "w") as f:
         subprocess.run(["sh", "./dig.sh"], stdout=f)
-def get_axfr():
-    print("[+] Enumerating AXFR zone transfer")
-    print("[+] Powered by DiG")
-    time.sleep(1)
 
 print("ReconSuite 1.0\n")
 print("By Wil Jankovic\n")
